@@ -1,0 +1,4 @@
+<resources>
+    <!-- debug 变体独立应用名，便于与 release 区分（包名同样带 .debug 后缀） -->
+    <string name="app_name">Toolkit Debug</string>
+</resources>

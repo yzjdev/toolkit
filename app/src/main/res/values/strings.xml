@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">Toolkit</string>
+    <string name="tab_privilege">特权</string>
+    <string name="tab_netguard">禁网</string>
+    <string name="tab_thermal">温度</string>
+
+    <string name="thermal_title">温度</string>
+    <string name="thermal_value">%1$s °C</string>
+    <string name="thermal_unavailable">当前设备未提供温度数据</string>
+
+    <string name="netguard_title">禁网</string>
+    <string name="netguard_subtitle">已禁网 %1$d / 共 %2$d 个应用</string>
+    <string name="netguard_not_ready">特权服务未连接，请先到「特权」页完成授权</string>
+    <string name="netguard_search_hint">搜索应用</string>
+    <string name="netguard_show_system">显示系统应用</string>
+    <string name="netguard_visible_count">共 %1$d 个</string>
+    <string name="type_system_apps">系统应用</string>
+    <string name="type_user_apps">用户应用</string>
+    <string name="action_more">更多</string>
+    <string name="toast_block_failed">禁网失败：%1$s</string>
+    <string name="toast_restore_failed">恢复失败：%1$s</string>
+    <string name="toast_blocked_count">已禁网 %1$d 个应用</string>
+    <string name="toast_restored_count">已恢复 %1$d 个应用</string>
+
+    <string name="tab_adb">ADB</string>
+    <string name="adb_title">ADB</string>
+    <string name="adb_connected">%1$s</string>
+    <string name="adb_disconnected">未连接</string>
+    <string name="adb_unknown_target">未知设备</string>
+    <string name="adb_menu_disconnect">断开</string>
+    <string name="adb_command_hint">输入命令，如 adb connect 127.0.0.1:5555</string>
+    <string name="adb_run">执行</string>
+    <string name="adb_abort">中止</string>
+    <string name="adb_requires_arg">需参数</string>
+    <string name="adb_clear">清空记录</string>
+    <string name="adb_copy">复制输出</string>
+    <string name="adb_copied">已复制</string>
+    <string name="adb_collapse">收起</string>
+    <string name="adb_empty">还没有执行过 ADB 操作</string>
+    <string name="adb_running">执行中…</string>
+</resources>

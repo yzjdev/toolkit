@@ -1,0 +1,2 @@
+- 用 `sh gradlew assembleDebug` 构建。
+- 编译后不自动安装，明确要求「安装」才执行 `adb install`。

@@ -1,0 +1,19 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+# 签名密钥与凭据（勿提交）
+keystore.properties
+*.jks
+*.keystore
+# 临时文件与 agent 本地状态
+/tmp
+/.atomcode
+/.kotlin

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面图标前景层：白色刻度线 + 圆角方框 + 中心圆点。
+  - 刻度线：四条边各三条，圆头描边，向外延伸出方框，营造「面板 / 标尺」感。
+  - 方框：圆角矩形，内层小圆角矩形镂空（evenOdd），形成描边环。
+  - 中心圆点：叠在镂空区域内，作为视觉焦点。
+  所有图形落在 34–74dp 内，圆形 / 圆角方遮罩均不裁切；
+  monochrome 层复用本文件，单色着色后形状完整。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 四边刻度线（无填充，仅白色圆头描边） -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M46,34 L46,40 M54,34 L54,40 M62,34 L62,40 M46,68 L46,74 M54,68 L54,74 M62,68 L62,74 M34,46 L40,46 M34,54 L40,54 M34,62 L40,62 M68,46 L74,46 M68,54 L74,54 M68,62 L74,62" />
+
+    <!-- 圆角方框（外层矩形 + 内层矩形镂空） -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M44,42 L64,42 A4,4 0 0 1 68,46 L68,62 A4,4 0 0 1 64,66 L44,66 A4,4 0 0 1 40,62 L40,46 A4,4 0 0 1 44,42 Z M46,47 L62,47 A2,2 0 0 1 63,48 L63,60 A2,2 0 0 1 62,61 L46,61 A2,2 0 0 1 45,60 L45,48 A2,2 0 0 1 46,47 Z" />
+
+    <!-- 中心圆点 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,50.5 A3.5,3.5 0 1 1 54,57.5 A3.5,3.5 0 1 1 54,50.5 Z" />
+</vector>
