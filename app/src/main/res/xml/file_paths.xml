@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 邮件原始报文（.eml）位于私有目录，通过 FileProvider 授权外部应用读取 -->
+    <files-path
+        name="mailraw"
+        path="mailraw/" />
+</paths>

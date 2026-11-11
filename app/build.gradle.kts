@@ -100,7 +100,9 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.kotlinx.coroutines.android)
 
     // Compose BOM：统一所有 Compose 依赖版本（material3 1.4.0 等）
     implementation(platform(libs.androidx.compose.bom))
@@ -111,6 +113,11 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.priv.kit.priv.ui)
     implementation(libs.hiddenapibypass)
+
+    // 邮件模块：IMAP / MIME 解析（JavaMail 的 Android 移植版）+ MMKV 键值存储
+    implementation(libs.android.mail)
+    implementation(libs.android.activation)
+    implementation(libs.mmkv)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  邮件正文里的图片来自任意第三方服务器，其中相当一部分仍是明文 http
+  （实测联想邮件 http://support.lenovo.com/...png）。默认策略会拦掉它们，
+  WebView 加载失败就显示成破图，所以这里必须放行明文流量。
+
+  其余流量仍走系统证书校验，没有降低 HTTPS 的安全性；
+  脚本执行、DOM 存储等在 WebView 设置里单独禁用。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

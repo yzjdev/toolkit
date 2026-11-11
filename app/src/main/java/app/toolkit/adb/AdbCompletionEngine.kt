@@ -27,6 +27,8 @@ data class AdbSuggestion(
      * 用于在候选列表里提示用户「这条还得继续输入」。
      */
     val requiresArgument: Boolean = false,
+    /** 完整用法示例，长按候选时展示，如 `pm install [-lrtsdb] <apk路径>` */
+    val usage: String = "",
 )
 
 /**
@@ -120,6 +122,7 @@ object AdbCompletionEngine {
                     } else {
                         AdbSuggestionKind.HINT
                     },
+                    usage = buildUsage(prefix, completed, "", current?.placeholders),
                 )
             }
         } else {
@@ -130,6 +133,7 @@ object AdbCompletionEngine {
                     description = spec.description,
                     kind = AdbSuggestionKind.COMMAND,
                     requiresArgument = spec.requiresArgument(),
+                    usage = buildUsage(prefix, completed, spec.name, spec.placeholders),
                 )
             }
         }
@@ -167,6 +171,24 @@ object AdbCompletionEngine {
             }
             append(next)
         }
+    }
+
+    /** 组装长按候选时展示的完整用法，如 `pm install [-lrtsdb] <apk路径>` */
+    private fun buildUsage(
+        prefix: String,
+        completed: List<String>,
+        name: String,
+        placeholders: List<String>?,
+    ): String {
+        val tokens = if (name.isEmpty()) completed else completed + name
+        return buildString {
+            append(prefix)
+            append(tokens.joinToString(" "))
+            if (!placeholders.isNullOrEmpty()) {
+                if (tokens.isNotEmpty()) append(' ')
+                append(placeholders.joinToString(" "))
+            }
+        }.trim()
     }
 
     /**

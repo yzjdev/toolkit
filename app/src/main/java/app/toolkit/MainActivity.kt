@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Adb
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Icon
@@ -30,9 +32,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.toolkit.ui.adb.AdbScreen
+import app.toolkit.ui.files.FilesScreen
 import app.toolkit.ui.netguard.NetGuardScreen
 import app.toolkit.ui.thermal.ThermalScreen
 import app.toolkit.ui.theme.ToolkitTheme
+import app.toolkit.mail.ui.MailScreen
 import priv.kit.ui.PrivilegeScaffold
 
 class MainActivity : ComponentActivity() {
@@ -54,6 +58,8 @@ private enum class Dest(val labelRes: Int, val icon: ImageVector) {
     NETGUARD(R.string.tab_netguard, Icons.Outlined.WifiOff),
     THERMAL(R.string.tab_thermal, Icons.Outlined.Thermostat),
     ADB(R.string.tab_adb, Icons.Outlined.Adb),
+    FILES(R.string.tab_files, Icons.Outlined.Folder),
+    MAIL(R.string.tab_mail, Icons.Outlined.MailOutline),
 }
 
 @Composable
@@ -95,6 +101,8 @@ private fun ToolkitRoot() {
                 )
                 Dest.THERMAL -> ThermalScreen()
                 Dest.ADB -> AdbScreen()
+                Dest.FILES -> FilesScreen()
+                Dest.MAIL -> MailScreen()
             }
         }
     }

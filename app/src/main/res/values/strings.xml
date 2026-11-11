@@ -23,6 +23,22 @@
     <string name="toast_restored_count">已恢复 %1$d 个应用</string>
 
     <string name="tab_adb">ADB</string>
+    <string name="tab_files">文件</string>
+    <string name="files_title">设备文件</string>
+    <string name="files_path">设备路径</string>
+    <string name="files_empty">此目录为空</string>
+    <string name="files_edit">编辑</string>
+    <string name="files_content">文件内容</string>
+    <string name="files_save">保存</string>
+    <string name="files_saved">文件已保存</string>
+    <string name="files_read_failed">读取失败，文件可能不是有效的 UTF-8 文本</string>
+    <string name="files_privilege_required">请先在「特权」页连接 Root 或 ADB 服务</string>
+    <string name="files_list_failed">读取目录失败</string>
+    <string name="files_not_text">这不是文本文件，无法用编辑器打开</string>
+    <string name="files_too_large">文件过大，不支持在应用内编辑</string>
+    <string name="files_parent">上级</string>
+    <string name="files_open">打开</string>
+    <string name="action_cancel">取消</string>
     <string name="adb_title">ADB</string>
     <string name="adb_connected">%1$s</string>
     <string name="adb_disconnected">未连接</string>
@@ -32,10 +48,86 @@
     <string name="adb_run">执行</string>
     <string name="adb_abort">中止</string>
     <string name="adb_requires_arg">需参数</string>
+    <string name="adb_close">知道了</string>
     <string name="adb_clear">清空记录</string>
     <string name="adb_copy">复制输出</string>
     <string name="adb_copied">已复制</string>
     <string name="adb_collapse">收起</string>
     <string name="adb_empty">还没有执行过 ADB 操作</string>
     <string name="adb_running">执行中…</string>
+
+    <!-- 邮件：底部导航入口 -->
+    <string name="tab_mail">邮件</string>
+
+    <!-- 邮件：设置 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_sync_section">同步</string>
+    <string name="settings_sync_count">每次同步最近多少封</string>
+    <string name="settings_sync_count_desc">首次同步按这个数量建立基线，之后只增量拉取新邮件。最多 %1$d 封。</string>
+    <string name="settings_sync_count_value">%1$d 封</string>
+    <string name="settings_save">保存</string>
+    <string name="settings_saved">已保存</string>
+    <string name="settings_sync_count_invalid">请输入 1 – %1$d 之间的数字</string>
+    <string name="settings_about_section">关于</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_storage">本地数据</string>
+    <string name="settings_storage_desc">邮件正文与元信息存在 MMKV，原始报文与内嵌图片存在应用私有目录。</string>
+
+    <!-- 邮件：统一收件箱 -->
+    <string name="inbox_title">统一收件箱</string>
+    <string name="inbox_search_hint">搜索主题、发件人、正文</string>
+    <string name="inbox_filter_all">全部账号</string>
+    <string name="inbox_empty">还没有邮件\n到「账号」页添加 QQ 邮箱后同步</string>
+    <string name="inbox_no_result">没有匹配的邮件</string>
+    <string name="inbox_syncing">正在同步…</string>
+    <string name="inbox_sync_done">同步完成，新增 %1$d 封</string>
+    <string name="inbox_sync_failed">同步失败：%1$s</string>
+    <string name="inbox_sync_none">还没有账号，先添加一个 QQ 邮箱</string>
+    <string name="inbox_count">共 %1$d 封</string>
+    <string name="inbox_unread">未读</string>
+
+    <!-- 邮件：详情 -->
+    <string name="mail_from">发件人</string>
+    <string name="mail_to">收件人</string>
+    <string name="mail_date">时间</string>
+    <string name="mail_account">来源账号</string>
+    <string name="mail_body_empty">（无正文内容）</string>
+    <string name="mail_links">链接</string>
+    <string name="mail_images">正文图片</string>
+    <string name="mail_raw_export">查看原始报文</string>
+    <string name="mail_raw_missing">这封邮件没有保存原始数据</string>
+    <string name="mail_raw_share_title">导出原始邮件</string>
+    <string name="mail_back">返回</string>
+
+    <!-- 邮件：账号管理 -->
+    <string name="accounts_title">账号</string>
+    <string name="accounts_empty">还没有添加邮箱账号\n点右下角 + 添加</string>
+    <string name="account_add">添加账号</string>
+    <string name="account_add_title">添加 QQ 邮箱</string>
+    <string name="account_edit_title">编辑账号</string>
+    <string name="account_email">邮箱地址</string>
+    <string name="account_email_hint">123456@qq.com</string>
+    <string name="account_auth_code">授权码</string>
+    <string name="account_auth_code_hint">16 位授权码，不是 QQ 密码</string>
+    <string name="account_auth_code_keep">留空表示不修改</string>
+    <string name="account_display_name">备注名（可选）</string>
+    <string name="account_display_name_hint">例如：工作号</string>
+    <string name="account_save">保存并同步</string>
+    <string name="account_cancel">取消</string>
+    <string name="account_delete">删除账号</string>
+    <string name="account_delete_confirm">删除「%1$s」及其本地邮件？服务器上的邮件不受影响。</string>
+    <string name="account_sync_now">立即同步</string>
+    <string name="account_never_synced">尚未同步</string>
+    <string name="account_last_sync">上次同步：%1$s</string>
+    <string name="account_message_count">%1$d 封本地邮件</string>
+    <string name="account_auth_help_title">怎么获取授权码</string>
+    <string name="account_auth_help_body">1. 电脑浏览器登录 QQ 邮箱网页版\n2. 右上角头像 → 设置 → 账号与安全 → 安全设置\n3. 开启「POP3/IMAP/SMTP 服务」。本应用只收信、不发信，但腾讯把这几个协议打包在同一个开关里，必须一起开启\n4. 开启时腾讯要求身份验证，可用手机 QQ 扫码、输入 QQ 密码或绑定手机收短信，按页面提示完成\n5. 验证通过后点「生成授权码」，得到 16 位授权码\n\n注意：\n· 没绑定手机号的账号，腾讯会先要求绑定手机才能开启服务\n· 新注册的 QQ 邮箱需满 14 天才能使用该服务\n· 授权码只显示一次，关闭弹窗后只能重置\n· 修改 QQ 密码会让授权码失效，需要重新生成</string>
+    <string name="account_email_invalid">请输入完整的邮箱地址</string>
+    <string name="account_auth_required">首次添加必须填写授权码</string>
+
+    <string name="action_refresh">刷新</string>
+    <string name="action_retry">重试</string>
+    <string name="action_ok">知道了</string>
+    <string name="action_close">关闭</string>
+    <string name="action_help">帮助</string>
 </resources>

@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.toolkit.R
 import app.toolkit.adb.AdbCompletionEngine
 import app.toolkit.adb.AdbLogEntry
+import app.toolkit.adb.AdbSuggestion
 import app.toolkit.adb.AdbSuggestionKind
 import app.toolkit.adb.AdbViewModel
 import app.toolkit.ui.components.ToolkitTopBar
@@ -242,6 +247,9 @@ private fun CommandInput(
     // 内容一变（用户继续打字）就自动重新展开，选中候选后也能立即收起。
     var dismissedFor by remember { mutableStateOf<String?>(null) }
 
+    // 长按候选时展示用法弹窗的候选；null 表示不展示
+    var usageFor by remember { mutableStateOf<AdbSuggestion?>(null) }
+
     // 提交后 ViewModel 会清空命令，这里同步一次，避免输入框残留
     LaunchedEffect(value) {
         if (value != fieldValue.text) {
@@ -315,58 +323,95 @@ private fun CommandInput(
                 shape = RoundedCornerShape(FieldCorner),
             ) {
                 suggestions.forEach { suggestion ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Text(
-                                    text = suggestion.label,
-                                    style = MonoStyle,
-                                    color = if (suggestion.kind == AdbSuggestionKind.HINT) {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    } else {
-                                        MaterialTheme.colorScheme.primary
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                if (suggestion.description.isNotBlank()) {
-                                    Text(
-                                        text = suggestion.description,
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                    // DropdownMenuItem 不支持长按，这里按 M3 规格复刻同一行：
+                    // 最小高度 48dp + 水平 16dp 内边距，外观与原菜单项一致。
+                    // 注意 heightIn 不能省——漏掉它行高会被压扁，列表会显得错乱。
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    fieldValue = TextFieldValue(
+                                        suggestion.text,
+                                        selection = TextRange(suggestion.text.length),
                                     )
-                                }
-                                // 必须带参数的命令在右侧给出提示，避免选中后直接回车却报缺参数
-                                if (suggestion.requiresArgument) {
-                                    Text(
-                                        text = stringResource(R.string.adb_requires_arg),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        },
-                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                        onClick = {
-                            fieldValue = TextFieldValue(
-                                suggestion.text,
-                                selection = TextRange(suggestion.text.length),
+                                    onValueChange(suggestion.text)
+                                    // 选中后先收起，继续输入时再按新内容展开
+                                    dismissedFor = suggestion.text
+                                },
+                                // 长按查看完整用法
+                                onLongClick = { usageFor = suggestion },
                             )
-                            onValueChange(suggestion.text)
-                            // 选中后先收起，继续输入时再按新内容展开
-                            dismissedFor = suggestion.text
-                        },
-                    )
+                            .padding(ExposedDropdownMenuDefaults.ItemContentPadding),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = suggestion.label,
+                            style = MonoStyle,
+                            color = if (suggestion.kind == AdbSuggestionKind.HINT) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (suggestion.description.isNotBlank()) {
+                            Text(
+                                text = suggestion.description,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        // 必须带参数的命令在右侧给出提示，避免选中后直接回车却报缺参数
+                        if (suggestion.requiresArgument) {
+                            Text(
+                                text = stringResource(R.string.adb_requires_arg),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                maxLines = 1,
+                            )
+                        }
+                    }
                 }
             }
+        }
+
+        // 长按候选弹出的用法说明
+        usageFor?.let { suggestion ->
+            AlertDialog(
+                onDismissRequest = { usageFor = null },
+                title = { Text(text = suggestion.label, style = MonoStyle) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // usage 为空时退回候选本身填入的命令，保证弹窗永远有内容
+                        SelectionContainer {
+                            Text(
+                                text = suggestion.usage.ifBlank { suggestion.text },
+                                style = MonoStyle,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        if (suggestion.description.isNotBlank()) {
+                            Text(
+                                text = suggestion.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { usageFor = null }) {
+                        Text(stringResource(R.string.adb_close))
+                    }
+                },
+            )
         }
 
         // 运行 / 中止按钮：与输入框同高、圆角一致
