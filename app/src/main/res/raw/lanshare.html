@@ -1,0 +1,1803 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>局域网传输</title>
+<style>
+/* 全部样式内联：这个页面由手机在局域网内直接发出，宿主机可能完全没有外网，
+   任何 @import / CDN 请求都会卡住首屏，所以字体只用系统栈。 */
+:root {
+  --ink:        #16191a;
+  --ink-soft:   #5c6462;
+  --ink-faint:  #8b9391;
+  --paper:      #f6f5f1;
+  --surface:    #fffefb;
+  --line:       #e2e0d8;
+  --line-soft:  #eeede6;
+  --accent:     #0f6f5c;
+  --accent-dim: #0f6f5c1a;
+  --danger:     #a8321f;
+  --warn:       #8a6100;
+  --ok:         #0f6f5c;
+  --row-hover:  #f1f0ea;
+  --shadow:     0 1px 2px #16191a0d, 0 8px 24px -12px #16191a26;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", sans-serif;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink:        #e8eae7;
+    --ink-soft:   #a4aca8;
+    --ink-faint:  #79817d;
+    --paper:      #121514;
+    --surface:    #191d1b;
+    --line:       #2b312e;
+    --line-soft:  #232826;
+    --accent:     #4fd1ae;
+    --accent-dim: #4fd1ae1f;
+    --danger:     #e8795f;
+    --warn:       #d7a94a;
+    --ok:         #4fd1ae;
+    --row-hover:  #1f2422;
+    --shadow:     0 1px 2px #0006, 0 12px 32px -16px #000000b3;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* 上传区高亮时不希望整页跟着抖动 */
+  overscroll-behavior-y: none;
+}
+
+::selection { background: var(--accent-dim); color: var(--ink); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 滚动条也归配色系统管，浏览器默认那套不属于任何设计 */
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
+  border: 3px solid var(--paper);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.brand-root {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  direction: rtl;
+  text-align: left;
+}
+
+.topbar-spacer { flex: 1 1 auto; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+  flex: none;
+}
+.dot.is-busy {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.dot.is-down {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* ---------- 路径栏 ---------- */
+
+.pathbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px 0;
+  flex-wrap: wrap;
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.crumb {
+  border: 0;
+  background: none;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.crumb:hover { background: var(--row-hover); color: var(--ink); }
+.crumb[aria-current="page"] { color: var(--ink); font-weight: 600; }
+
+.crumb-sep { color: var(--ink-faint); user-select: none; }
+
+.pathbar-spacer { flex: 1 1 auto; }
+
+/* ---------- 按钮 ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 520;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 130ms ease, border-color 130ms ease, transform 130ms ease;
+}
+.btn:hover { background: var(--row-hover); border-color: var(--ink-faint); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 86%, var(--ink));
+}
+
+.btn-ghost { border-color: transparent; background: transparent; color: var(--ink-soft); }
+.btn-ghost:hover { background: var(--row-hover); color: var(--ink); border-color: transparent; }
+
+.btn-icon {
+  padding: 7px;
+  border-radius: 7px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  line-height: 0;
+}
+.btn-icon:hover { color: var(--ink); background: var(--row-hover); border-color: transparent; }
+.btn-icon.is-danger:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+.btn svg { flex: none; }
+
+/* ---------- 主区域 ---------- */
+
+main {
+  flex: 1 1 auto;
+  padding: 14px 22px 0;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* 拖拽进入整页时的高亮：边框走内阴影，避免布局位移 */
+body.is-dropping .panel {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), var(--shadow);
+}
+body.is-dropping::after {
+  content: "松开即可上传到当前目录";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  backdrop-filter: blur(3px);
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* 表头 */
+.row-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 148px 84px;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 55%, var(--surface));
+  font-size: 11.5px;
+  font-weight: 620;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.row-head > *:nth-child(2) { text-align: right; }
+.row-head > *:nth-child(4) { text-align: right; }
+.panel.is-empty .row-head { display: none; }
+
+#list { list-style: none; margin: 0; padding: 0; }
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 148px 84px;
+  gap: 12px;
+  align-items: center;
+  padding: 0 16px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 110ms ease;
+}
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--row-hover); }
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.name:hover .name-text { text-decoration: underline; text-underline-offset: 3px; }
+
+.name-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-faint);
+}
+.row.is-dir .name-icon { color: var(--accent); }
+
+.name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row.is-dir .name-text { font-weight: 560; }
+
+.size, .mtime {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.size { text-align: right; }
+.mtime { text-align: right; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.row:hover .actions, .row:focus-within .actions { opacity: 1; }
+@media (hover: none) { .actions { opacity: 1; } }
+
+/* 状态区 */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+/* 作者样式里的 display 会盖掉 UA 的 [hidden]{display:none}，必须显式让位 */
+.state[hidden] { display: none; }
+.state-title { font-size: 15px; font-weight: 560; color: var(--ink); }
+.state-hint { font-size: 13px; color: var(--ink-faint); max-width: 46ch; }
+.state.is-error .state-title { color: var(--danger); }
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 720ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 传输队列 ---------- */
+
+.transfers {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  margin: 14px 22px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: none;
+}
+.transfers.is-open { display: block; }
+
+.transfers-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.transfers-head strong { color: var(--ink); font-weight: 600; }
+
+#transfer-list { list-style: none; margin: 0; padding: 0; max-height: 30dvh; overflow-y: auto; }
+
+.transfer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+.transfer:last-child { border-bottom: 0; }
+
+.transfer-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.transfer-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.transfer-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.transfer-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+.transfer.is-failed .transfer-fill { background: var(--danger); }
+.transfer.is-failed .transfer-meta { color: var(--danger); }
+.transfer.is-done .transfer-fill { background: var(--ok); }
+.transfer.is-cancelled .transfer-fill { background: var(--ink-faint); }
+.transfer.is-cancelled .transfer-meta { color: var(--ink-faint); }
+
+/* 中止按钮：只在还能中止的行上出现 */
+.transfer-stop {
+  padding: 3px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-faint);
+  line-height: 0;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+.transfer-stop:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* ---------- 传输记录 ---------- */
+
+.record-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+}
+.record-badge[hidden] { display: none; }
+
+#dlg-records { width: min(540px, calc(100vw - 32px)); }
+
+.records-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.records-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 620;
+}
+
+.records-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(62dvh, 440px);
+  overflow-y: auto;
+}
+
+.record {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+.record:last-child { border-bottom: 0; }
+
+.record-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-faint);
+  line-height: 0;
+}
+.record.is-up .record-icon { color: var(--accent); }
+
+.record-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.record.is-failed .record-meta { color: var(--danger); }
+
+.record-empty {
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+/* ---------- 弹层 ---------- */
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0;
+  width: min(400px, calc(100vw - 40px));
+  box-shadow: 0 2px 4px #00000014, 0 24px 64px -24px #00000059;
+}
+dialog::backdrop { background: #16191a59; backdrop-filter: blur(2px); }
+
+.dialog-body { padding: 20px 20px 16px; }
+.dialog-title { font-size: 16px; font-weight: 620; margin: 0 0 6px; }
+.dialog-text { font-size: 13.5px; color: var(--ink-soft); margin: 0 0 16px; }
+.dialog-text code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--accent-dim);
+  padding: 1px 5px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 20px 18px;
+}
+
+.field {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+}
+.field:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+
+/* 拖拽覆盖整个视口时，隐藏 body 上的滚动条避免横向抖动 */
+body.is-dropping { overflow: hidden; }
+
+/* ---------- 底部说明 ---------- */
+
+footer {
+  padding: 14px 22px 22px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  display: flex;
+  gap: 6px 16px;
+  flex-wrap: wrap;
+}
+footer kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 720px) {
+  .topbar { padding: 12px 14px; gap: 10px; }
+  .brand-root { display: none; }
+  .pathbar { padding: 10px 14px 0; }
+  main { padding: 12px 14px 0; }
+  .transfers { margin: 12px 14px 0; }
+  footer { padding: 12px 14px 18px; }
+
+  .row-head, .row {
+    grid-template-columns: minmax(0, 1fr) 76px 68px;
+  }
+  .row-head > *:nth-child(3), .row > .mtime { display: none; }
+  .actions { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">局域网传输</span>
+    <span class="brand-root" id="root-label"></span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <button class="btn btn-ghost" id="btn-records" type="button" title="传输记录">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3.5 2"/>
+    </svg>
+    记录
+    <span class="record-badge" id="record-count" hidden></span>
+  </button>
+  <span class="pill" id="conn-pill">
+    <span class="dot" id="conn-dot"></span>
+    <span id="conn-text">已连接</span>
+  </span>
+</header>
+
+<nav class="pathbar" aria-label="当前路径">
+  <div class="crumbs" id="crumbs"></div>
+  <div class="pathbar-spacer"></div>
+  <button class="btn" id="btn-mkdir" type="button">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>
+    新建文件夹
+  </button>
+  <button class="btn btn-primary" id="btn-upload" type="button">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    上传文件
+  </button>
+  <input type="file" id="file-input" multiple hidden>
+</nav>
+
+<main>
+  <section class="panel" aria-live="polite" aria-busy="false" id="panel">
+    <div class="row-head" aria-hidden="true">
+      <span>名称</span><span>大小</span><span>修改时间</span><span>操作</span>
+    </div>
+    <ul id="list"></ul>
+    <div class="state" id="state" hidden></div>
+  </section>
+</main>
+
+<section class="transfers" id="transfers" aria-live="polite">
+  <div class="transfers-head">
+    <strong id="transfer-summary">传输中</strong>
+    <span id="transfer-speed"></span>
+    <div class="topbar-spacer"></div>
+    <button class="btn btn-ghost" id="btn-abort-all" type="button" style="padding:4px 9px;font-size:12px" hidden>全部中止</button>
+    <button class="btn btn-ghost" id="btn-clear-transfers" type="button" style="padding:4px 9px;font-size:12px">清除已完成</button>
+  </div>
+  <ul id="transfer-list"></ul>
+</section>
+
+<footer>
+  <span>把文件拖进窗口即可上传到当前目录</span>
+  <span><kbd>Esc</kbd> 返回上一级</span>
+  <span>同一 WiFi 下其它设备访问同一地址也能读写</span>
+</footer>
+
+<dialog id="dlg-mkdir">
+  <form method="dialog" id="form-mkdir">
+    <div class="dialog-body">
+      <h2 class="dialog-title">新建文件夹</h2>
+      <p class="dialog-text">在当前目录下创建。</p>
+      <input class="field" id="mkdir-name" name="name" placeholder="文件夹名称" autocomplete="off"
+             maxlength="120" required>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+      <button class="btn btn-primary" value="ok" type="submit">创建</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-delete">
+  <div class="dialog-body">
+    <h2 class="dialog-title">删除？</h2>
+    <p class="dialog-text" id="delete-text"></p>
+  </div>
+  <div class="dialog-foot">
+    <button class="btn" id="delete-cancel" type="button">取消</button>
+    <button class="btn btn-primary" id="delete-confirm" type="button"
+            style="background:var(--danger);border-color:var(--danger);color:var(--paper)">删除</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-records">
+  <div class="records-head">
+    <h2 class="records-title">传输记录</h2>
+    <div class="topbar-spacer"></div>
+    <button class="btn btn-ghost" id="btn-clear-records" type="button"
+            style="padding:4px 9px;font-size:12px">清空记录</button>
+    <button class="btn btn-ghost" id="btn-close-records" type="button"
+            style="padding:4px 9px;font-size:12px">关闭</button>
+  </div>
+  <ul class="records-list" id="records-list"></ul>
+</dialog>
+
+<dialog id="dlg-code">
+  <form method="dialog" id="form-code">
+    <div class="dialog-body">
+      <h2 class="dialog-title">需要授权码</h2>
+      <p class="dialog-text">手机端已开启授权码，输入后即可访问这个目录。</p>
+      <input class="field" id="code-input" name="code" placeholder="4 位数字授权码" autocomplete="off"
+             inputmode="numeric" pattern="[0-9]*" maxlength="4" required>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-primary" value="ok" type="submit">进入</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* 传输页面逻辑：只依赖同源接口，不加载任何外部脚本。 */
+"use strict";
+
+(function () {
+  var API = {
+    list: "/api/list",
+    download: "/api/download",
+    upload: "/api/upload",
+    mkdir: "/api/mkdir",
+    remove: "/api/delete"
+  };
+
+  /* 当前浏览路径，始终以 / 开头、不带结尾斜杠（根目录就是 "/"） */
+  var currentPath = "/";
+  var entries = [];
+  var loading = false;
+  var pendingDelete = null;
+
+  var el = {
+    list: document.getElementById("list"),
+    state: document.getElementById("state"),
+    panel: document.getElementById("panel"),
+    crumbs: document.getElementById("crumbs"),
+    rootLabel: document.getElementById("root-label"),
+    connDot: document.getElementById("conn-dot"),
+    connText: document.getElementById("conn-text"),
+    fileInput: document.getElementById("file-input"),
+    btnUpload: document.getElementById("btn-upload"),
+    btnMkdir: document.getElementById("btn-mkdir"),
+    transfers: document.getElementById("transfers"),
+    transferList: document.getElementById("transfer-list"),
+    transferSummary: document.getElementById("transfer-summary"),
+    transferSpeed: document.getElementById("transfer-speed"),
+    btnClearTransfers: document.getElementById("btn-clear-transfers"),
+    btnAbortAll: document.getElementById("btn-abort-all"),
+    dlgMkdir: document.getElementById("dlg-mkdir"),
+    formMkdir: document.getElementById("form-mkdir"),
+    mkdirName: document.getElementById("mkdir-name"),
+    dlgDelete: document.getElementById("dlg-delete"),
+    deleteText: document.getElementById("delete-text"),
+    deleteConfirm: document.getElementById("delete-confirm"),
+    deleteCancel: document.getElementById("delete-cancel"),
+    btnRecords: document.getElementById("btn-records"),
+    recordCount: document.getElementById("record-count"),
+    dlgRecords: document.getElementById("dlg-records"),
+    recordsList: document.getElementById("records-list"),
+    btnClearRecords: document.getElementById("btn-clear-records"),
+    btnCloseRecords: document.getElementById("btn-close-records"),
+    dlgCode: document.getElementById("dlg-code"),
+    formCode: document.getElementById("form-code"),
+    codeInput: document.getElementById("code-input")
+  };
+
+  /* ---------- 授权码 ---------- */
+
+  /**
+   * 当前会话用的授权码。
+   *
+   * 只放在内存和 sessionStorage：手机端关掉授权码后这个值就没用了，
+   * 用 localStorage 长期留着反而会让用户下次访问时带着一个过期凭据。
+   */
+  var CODE_KEY = "lanshare-code";
+  var accessCode = "";
+  try {
+    accessCode = sessionStorage.getItem(CODE_KEY) || "";
+  } catch (e) {
+    // 隐私模式下 sessionStorage 会抛错，退化成只在内存里记
+    accessCode = "";
+  }
+
+  function saveAccessCode(code) {
+    accessCode = code || "";
+    try {
+      if (accessCode) sessionStorage.setItem(CODE_KEY, accessCode);
+      else sessionStorage.removeItem(CODE_KEY);
+    } catch (e) { /* 存不了就算了，本次会话仍可用 */ }
+  }
+
+  /** 把授权码拼到 URL 上；没开启时原样返回。 */
+  function withCode(url) {
+    if (!accessCode) return url;
+    return url + (url.indexOf("?") >= 0 ? "&" : "?") + "code=" + encode(accessCode);
+  }
+
+  /** 收到 401：弹框让用户输入，输入正确后重试原来的动作。 */
+  var retryAfterCode = null;
+
+  function askAccessCode(retry) {
+    retryAfterCode = retry || null;
+    el.codeInput.value = "";
+    // returnValue 会跨次保留，不重置的话上一次提交留下的 "ok"
+    // 会让这次按 Esc 关闭时也当成提交成功
+    el.dlgCode.returnValue = "";
+    if (!el.dlgCode.open) el.dlgCode.showModal();
+    setTimeout(function () { el.codeInput.focus(); }, 30);
+  }
+
+  function submitAccessCode(value) {
+    var trimmed = (value || "").trim();
+    if (!trimmed) return;
+    saveAccessCode(trimmed);
+    // 表单的 submit 被 preventDefault 接管了，returnValue 不会自动写，
+    // 这里手动标记：下面的 close 监听靠它区分「提交」和「用户关掉弹框」
+    el.dlgCode.returnValue = "ok";
+    el.dlgCode.close();
+    var retry = retryAfterCode;
+    retryAfterCode = null;
+    // 先重新拉一次列表验证码对不对：错了会再次弹框，对了就把页面补全
+    if (retry) retry();
+    else load(currentPath);
+  }
+
+  /* ---------- 小工具 ---------- */
+
+  function formatSize(bytes) {
+    if (bytes === null || bytes === undefined || bytes < 0) return "—";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+    return (bytes / 1073741824).toFixed(2) + " GB";
+  }
+
+  function formatTime(ms) {
+    if (!ms) return "—";
+    var d = new Date(ms);
+    if (isNaN(d.getTime())) return "—";
+    var now = new Date();
+    var pad = function (n) { return n < 10 ? "0" + n : "" + n; };
+    var hm = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    if (d.toDateString() === now.toDateString()) return hm;
+    if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + "/" + d.getDate() + " " + hm;
+    return d.getFullYear() + "/" + (d.getMonth() + 1) + "/" + d.getDate();
+  }
+
+  function joinPath(parent, name) {
+    var base = parent.replace(/\/+$/, "");
+    return (base === "" ? "" : base) + "/" + name;
+  }
+
+  function parentOf(path) {
+    var trimmed = path.replace(/\/+$/, "");
+    if (trimmed === "") return "/";
+    var idx = trimmed.lastIndexOf("/");
+    return idx <= 0 ? "/" : trimmed.slice(0, idx);
+  }
+
+  function encode(value) {
+    return encodeURIComponent(value);
+  }
+
+  /* 图标按类型分：文件夹、图片、音频、视频、压缩包、文本、其它。
+     用线条描边统一视觉重量，不混入 emoji。 */
+  function iconFor(entry) {
+    var paths;
+    if (entry.dir) {
+      paths = '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>';
+    } else {
+      var ext = entry.name.split(".").pop().toLowerCase();
+      if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic"].indexOf(ext) >= 0) {
+        paths = '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/>' +
+                '<path d="M21 16l-5-5-6 6"/>';
+      } else if (["mp3", "m4a", "flac", "wav", "ogg", "aac"].indexOf(ext) >= 0) {
+        paths = '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>';
+      } else if (["mp4", "mkv", "mov", "webm", "avi", "3gp"].indexOf(ext) >= 0) {
+        paths = '<rect x="2.5" y="5" width="14" height="14" rx="2"/><path d="M16.5 10l5-3v10l-5-3z"/>';
+      } else if (["zip", "rar", "7z", "tar", "gz", "xz", "apk"].indexOf(ext) >= 0) {
+        paths = '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v6M12 12v2M12 17v1"/>';
+      } else if (["txt", "md", "log", "json", "xml", "csv", "ini", "conf", "yml", "yaml",
+                  "kt", "java", "js", "ts", "css", "html", "py", "sh"].indexOf(ext) >= 0) {
+        paths = '<path d="M6 3h8l4 4v14a0 0 0 0 1 0 0H6z"/><path d="M14 3v5h4"/><path d="M9 13h6M9 17h4"/>';
+      } else {
+        paths = '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4"/>';
+      }
+    }
+    return '<svg class="name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+           ' stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"' +
+           ' aria-hidden="true">' + paths + "</svg>";
+  }
+
+  /* ---------- 连接状态 ---------- */
+
+  function setConn(state) {
+    el.connDot.className = "dot" + (state === "ok" ? "" : state === "busy" ? " is-busy" : " is-down");
+    el.connText.textContent =
+      state === "ok" ? "已连接" : state === "busy" ? "传输中" : "连接中断";
+  }
+
+  function showToastlessError(message) {
+    setConn("down");
+    renderState("error", message, "确认手机端服务仍在运行，且两台设备在同一 WiFi 下。");
+  }
+
+  /* ---------- 列表渲染 ---------- */
+
+  function renderState(kind, title, hint) {
+    el.state.hidden = false;
+    el.state.className = "state" + (kind === "error" ? " is-error" : "");
+    // 没有行的时候表头只是噪声，跟着一起藏起来
+    el.panel.classList.add("is-empty");
+    var spinner = kind === "loading" ? '<div class="spinner" role="status" aria-label="加载中"></div>' : "";
+    el.state.innerHTML =
+      spinner +
+      '<div class="state-title"></div>' +
+      (hint ? '<div class="state-hint"></div>' : "");
+    el.state.querySelector(".state-title").textContent = title;
+    if (hint) el.state.querySelector(".state-hint").textContent = hint;
+    el.list.innerHTML = "";
+  }
+
+  function hideState() {
+    el.state.hidden = true;
+    el.state.innerHTML = "";
+    el.panel.classList.remove("is-empty");
+  }
+
+  function renderCrumbs() {
+    var parts = currentPath.split("/").filter(function (p) { return p !== ""; });
+    var html = '<button class="crumb" type="button" data-path="/">根目录</button>';
+    var acc = "";
+    parts.forEach(function (part) {
+      acc += "/" + part;
+      html += '<span class="crumb-sep">/</span>' +
+              '<button class="crumb" type="button" data-path="' + escapeAttr(acc) + '"></button>';
+    });
+    el.crumbs.innerHTML = html;
+    var buttons = el.crumbs.querySelectorAll(".crumb");
+    var last = buttons[buttons.length - 1];
+    // 路径名用 textContent 写入，避免文件名里的 <> 被当成标签
+    parts.forEach(function (part, i) {
+      buttons[i + 1].textContent = part;
+    });
+    buttons.forEach(function (btn) {
+      btn.setAttribute("aria-current", btn === last ? "page" : "false");
+    });
+  }
+
+  function escapeAttr(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderList() {
+    hideState();
+    if (entries.length === 0) {
+      renderState("empty", "这个文件夹是空的", "点右上角「上传文件」，或把文件直接拖进窗口。");
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    entries.forEach(function (entry) {
+      var li = document.createElement("li");
+      li.className = "row" + (entry.dir ? " is-dir" : "");
+      li.dataset.path = entry.path;
+      li.dataset.dir = entry.dir ? "1" : "0";
+
+      var nameBtn = document.createElement("button");
+      nameBtn.type = "button";
+      nameBtn.className = "name";
+      nameBtn.innerHTML = iconFor(entry) + '<span class="name-text"></span>';
+      nameBtn.querySelector(".name-text").textContent = entry.name;
+      nameBtn.title = entry.name;
+      nameBtn.addEventListener("click", function () {
+        if (entry.dir) {
+          navigate(entry.path);
+        } else {
+          download(entry);
+        }
+      });
+
+      var size = document.createElement("span");
+      size.className = "size";
+      size.textContent = entry.dir ? "—" : formatSize(entry.size);
+
+      var mtime = document.createElement("span");
+      mtime.className = "mtime";
+      mtime.textContent = formatTime(entry.mtime);
+
+      var actions = document.createElement("div");
+      actions.className = "actions";
+
+      if (!entry.dir) {
+        actions.appendChild(iconButton("download", "下载 " + entry.name, function () {
+          download(entry);
+        }));
+      }
+      actions.appendChild(iconButton("delete", "删除 " + entry.name, function () {
+        askDelete(entry);
+      }));
+
+      li.appendChild(nameBtn);
+      li.appendChild(size);
+      li.appendChild(mtime);
+      li.appendChild(actions);
+      frag.appendChild(li);
+    });
+    el.list.innerHTML = "";
+    el.list.appendChild(frag);
+  }
+
+  function iconButton(kind, label, onClick) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-icon" + (kind === "delete" ? " is-danger" : "");
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = kind === "delete"
+      ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+        ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>'
+      : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+        ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>';
+    btn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  /* ---------- 数据加载 ---------- */
+
+  /* 每次加载递增；只有最新一次请求的结果会被采用，
+     避免快速切目录时旧响应把新列表覆盖回去 */
+  var loadSeq = 0;
+
+  function load(path, options) {
+    var silent = options && options.silent;
+    var seq = ++loadSeq;
+    loading = true;
+    if (!silent) {
+      el.panel.setAttribute("aria-busy", "true");
+      renderState("loading", "正在读取目录…");
+    }
+    fetch(withCode(API.list + "?path=" + encode(path)), { cache: "no-store" })
+      .then(function (response) {
+        if (response.status === 401) {
+          if (seq === loadSeq) {
+            loading = false;
+            el.panel.setAttribute("aria-busy", "false");
+            renderState("error", "需要授权码", "在手机端「局域网传输」页可以查看或修改授权码。");
+          }
+          askAccessCode(function () { load(path, options); });
+          return null;
+        }
+        return response.json().then(function (body) {
+          if (!response.ok) throw new Error(body.error || ("HTTP " + response.status));
+          return body;
+        });
+      })
+      .then(function (body) {
+        if (!body || seq !== loadSeq) return;
+        currentPath = body.path || path;
+        entries = body.entries || [];
+        el.rootLabel.textContent = body.root || "";
+        el.rootLabel.title = body.root || "";
+        setConn("ok");
+        renderCrumbs();
+        renderList();
+      })
+      .catch(function (error) {
+        if (seq !== loadSeq) return;
+        showToastlessError("读取目录失败：" + error.message);
+      })
+      .finally(function () {
+        if (seq !== loadSeq) return;
+        loading = false;
+        el.panel.setAttribute("aria-busy", "false");
+      });
+  }
+
+  function navigate(path) {
+    if (path === currentPath) {
+      load(path);
+      return;
+    }
+    currentPath = path;
+    renderCrumbs();
+    load(path);
+    // 路径进 URL hash，刷新或分享链接能回到同一目录
+    history.replaceState(null, "", "#" + encode(path));
+  }
+
+  function pathFromHash() {
+    var raw = location.hash.replace(/^#/, "");
+    if (!raw) return "/";
+    try {
+      var decoded = decodeURIComponent(raw);
+      return decoded.charAt(0) === "/" ? decoded : "/" + decoded;
+    } catch (e) {
+      return "/";
+    }
+  }
+
+  /* ---------- 下载 ---------- */
+
+  function download(entry) {
+    // 下载走 <a href> 直连，带不了自定义头，只能把授权码放进 query
+    var url = withCode(API.download + "?path=" + encode(entry.path));
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = entry.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    // 浏览器下载拿不到可靠的完成回调，只能记「在什么时候点了下载什么」；
+    // 不标成功也不标失败，避免记录里出现没发生过的结论
+    addRecord("down", entry.name, entry.path, entry.size, "sent", "");
+  }
+
+  /* ---------- 上传队列 ---------- */
+
+  var transferSeq = 0;
+  var transfers = [];
+  /* 同时上传 2 个：再多会互相抢带宽，进度条反而不动 */
+  var MAX_PARALLEL = 2;
+  var activeCount = 0;
+
+  function pumpTransfers() {
+    while (activeCount < MAX_PARALLEL) {
+      var next = null;
+      for (var i = 0; i < transfers.length; i++) {
+        if (transfers[i].status === "queued") { next = transfers[i]; break; }
+      }
+      if (!next) break;
+      startTransfer(next);
+    }
+    renderTransfers();
+  }
+
+  function startTransfer(item) {
+    item.status = "uploading";
+    item.active = true;
+    item.settled = false;
+    activeCount++;
+    setConn("busy");
+
+    // 记下上一刻的字节与时间，用于算瞬时速度
+    var lastLoaded = 0;
+    var lastAt = Date.now();
+
+    var xhr = new XMLHttpRequest();
+    item.xhr = xhr;
+    xhr.open("POST", withCode(API.upload + "?path=" + encode(item.dir) + "&name=" + encode(item.name)), true);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
+    xhr.upload.onprogress = function (event) {
+      if (!event.lengthComputable) return;
+      // 已中止的条目不再更新进度，避免数字继续跳动
+      if (item.status !== "uploading") return;
+      item.loaded = event.loaded;
+      var now = Date.now();
+      if (now - lastAt > 260) {
+        var deltaBytes = event.loaded - lastLoaded;
+        var deltaMs = now - lastAt;
+        item.speed = deltaMs > 0 ? (deltaBytes * 1000) / deltaMs : 0;
+        lastLoaded = event.loaded;
+        lastAt = now;
+        renderTransfers();
+      }
+    };
+
+    xhr.onload = function () {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        settleTransfer(item, "done", "");
+        return;
+      }
+      if (xhr.status === 401) {
+        // 授权码不对：把这一条退回排队，输对码之后整批会继续发。
+        // 直接标失败的话用户得重新拖一次文件。
+        item.active = false;
+        activeCount--;
+        item.settled = true;
+        item.xhr = null;
+        item.speed = 0;
+        item.loaded = 0;
+        item.status = "queued";
+        item.message = "等待授权码";
+        renderTransfers();
+        askAccessCode(function () { pumpTransfers(); });
+        return;
+      }
+      settleTransfer(item, "failed", parseError(xhr) || ("HTTP " + xhr.status));
+    };
+
+    xhr.onerror = function () {
+      // abort() 之后部分浏览器也会触发 onerror，此时要保留「已中止」而不是报网络错误
+      if (item.status === "cancelled") {
+        settleTransfer(item, "cancelled", "已中止");
+      } else {
+        settleTransfer(item, "failed", "网络中断");
+      }
+    };
+
+    xhr.onabort = function () {
+      settleTransfer(item, "cancelled", "已中止");
+    };
+
+    // 直接发送 File 对象，浏览器流式读取，不会把大文件读进内存
+    xhr.send(item.rawFile);
+  }
+
+  /**
+   * 结算一次传输，只生效一次。
+   *
+   * xhr.abort() 在部分浏览器里会先后触发 onabort 和 onerror，
+   * 不设防会让同一个文件被记两遍、并发计数被多减一次。
+   */
+  function settleTransfer(item, status, message) {
+    if (item.settled) return;
+    item.settled = true;
+    if (item.active) {
+      item.active = false;
+      activeCount--;
+    }
+    item.xhr = null;
+    item.speed = 0;
+    item.status = status;
+    item.message = message || "";
+    if (status === "done") item.loaded = item.size;
+    afterTransfer(item);
+  }
+
+  /** 中止单个传输：进行中的断开连接，排队中的直接从队列摘掉。 */
+  function cancelTransfer(item) {
+    if (item.status === "uploading") {
+      // 先标记再 abort：onerror 里据此判断这不是网络故障
+      item.status = "cancelled";
+      item.message = "已中止";
+      item.speed = 0;
+      var xhr = item.xhr;
+      if (xhr) {
+        try { xhr.abort(); } catch (e) { /* 已经结束，忽略 */ }
+      }
+      // 有的浏览器 abort 不回调，这里兜底；已经结算过就是空操作
+      settleTransfer(item, "cancelled", "已中止");
+      return;
+    }
+    if (item.status === "queued") {
+      // 还没开始发，直接从队列移除即可
+      transfers = transfers.filter(function (t) { return t !== item; });
+      renderTransfers();
+    }
+  }
+
+  /** 中止全部：排队中的清空，进行中的全部 abort。 */
+  function abortAllTransfers() {
+    transfers.slice().forEach(function (item) {
+      if (item.status === "uploading" || item.status === "queued") {
+        cancelTransfer(item);
+      }
+    });
+    renderTransfers();
+  }
+
+  function parseError(xhr) {
+    try {
+      var body = JSON.parse(xhr.responseText);
+      return body && body.error ? body.error : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function afterTransfer(item) {
+    item.speed = 0;
+    if (activeCount === 0) setConn("ok");
+    renderTransfers();
+    if (item.status === "done") {
+      // 传完刷新当前目录：文件立刻出现在列表里
+      if (item.dir === currentPath) load(currentPath, { silent: true });
+    }
+    // 只有真正开始过的传输才记一笔，排队中被摘掉的不算
+    addRecord(
+      "up",
+      item.name,
+      item.dir === "/" ? "/" + item.name : item.dir + "/" + item.name,
+      item.size,
+      item.status,
+      item.message
+    );
+    pumpTransfers();
+  }
+
+  function renderTransfers() {
+    if (transfers.length === 0) {
+      el.transfers.classList.remove("is-open");
+      el.transferList.innerHTML = "";
+      return;
+    }
+    el.transfers.classList.add("is-open");
+
+    var done = 0, failed = 0, cancelled = 0, active = 0;
+    var bytesLoaded = 0, bytesTotal = 0, speed = 0;
+    transfers.forEach(function (t) {
+      if (t.status === "done") done++;
+      else if (t.status === "failed") failed++;
+      else if (t.status === "cancelled") cancelled++;
+      else { active++; speed += t.speed || 0; }
+      bytesLoaded += t.loaded || 0;
+      bytesTotal += t.size || 0;
+    });
+
+    var summary;
+    if (active > 0) {
+      summary = "正在传输 " + active + " 个";
+    } else if (failed > 0 || cancelled > 0) {
+      var bits = ["完成 " + done + " 个"];
+      if (failed > 0) bits.push("失败 " + failed + " 个");
+      if (cancelled > 0) bits.push("中止 " + cancelled + " 个");
+      summary = bits.join("，");
+    } else {
+      summary = "已完成 " + done + " 个";
+    }
+    el.transferSummary.textContent = summary;
+
+    var parts = [];
+    if (bytesTotal > 0) parts.push(formatSize(bytesLoaded) + " / " + formatSize(bytesTotal));
+    if (speed > 0) parts.push(formatSize(speed) + "/s");
+    el.transferSpeed.textContent = parts.join(" · ");
+
+    // 没有可中止的条目时把「全部中止」收起来，避免一个永远点不动的按钮
+    var abortable = transfers.filter(function (t) {
+      return t.status === "uploading" || t.status === "queued";
+    }).length;
+    el.btnAbortAll.hidden = abortable === 0;
+
+    var frag = document.createDocumentFragment();
+    transfers.forEach(function (t) {
+      var li = document.createElement("li");
+      li.className = "transfer is-" + t.status;
+
+      var name = document.createElement("span");
+      name.className = "transfer-name";
+      name.textContent = t.name;
+      name.title = t.name;
+
+      var meta = document.createElement("span");
+      meta.className = "transfer-meta";
+      if (t.status === "done") {
+        meta.textContent = "完成";
+      } else if (t.status === "failed") {
+        meta.textContent = t.message || "失败";
+      } else if (t.status === "cancelled") {
+        meta.textContent = "已中止";
+      } else if (t.status === "queued") {
+        meta.textContent = "等待中";
+      } else {
+        var pct = t.size > 0 ? Math.floor((t.loaded / t.size) * 100) : 0;
+        meta.textContent = pct + "% · " + (t.speed ? formatSize(t.speed) + "/s" : formatSize(t.loaded));
+      }
+
+      li.appendChild(name);
+      li.appendChild(meta);
+
+      // 还能中止的行才给按钮：完成、失败、已中止都没有意义
+      if (t.status === "uploading" || t.status === "queued") {
+        var stop = document.createElement("button");
+        stop.type = "button";
+        stop.className = "transfer-stop";
+        stop.title = "中止 " + t.name;
+        stop.setAttribute("aria-label", "中止 " + t.name);
+        stop.innerHTML =
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+          '<path d="M6 6l12 12M18 6L6 18"/></svg>';
+        stop.addEventListener("click", function () { cancelTransfer(t); });
+        li.appendChild(stop);
+      } else {
+        // 占位，保持三列对齐
+        li.appendChild(document.createElement("span"));
+      }
+
+      var bar = document.createElement("div");
+      bar.className = "transfer-bar";
+      var fill = document.createElement("div");
+      fill.className = "transfer-fill";
+      var ratio = t.size > 0 ? (t.loaded / t.size) : (t.status === "done" ? 1 : 0);
+      fill.style.width = Math.max(0, Math.min(100, ratio * 100)) + "%";
+      bar.appendChild(fill);
+
+      li.appendChild(bar);
+      frag.appendChild(li);
+    });
+    el.transferList.innerHTML = "";
+    el.transferList.appendChild(frag);
+  }
+
+  function clearFinishedTransfers() {
+    transfers = transfers.filter(function (t) {
+      return t.status === "queued" || t.status === "uploading";
+    });
+    renderTransfers();
+  }
+
+  /* ---------- 传输记录 ---------- */
+
+  /* 记录存在浏览器本地：关掉页面再打开还能看到传过什么，
+     上限 200 条，超出丢最旧的，避免 localStorage 无限膨胀。 */
+  var RECORD_KEY = "lanshare.records.v1";
+  var RECORD_LIMIT = 200;
+  var records = loadRecords();
+
+  function loadRecords() {
+    try {
+      var raw = localStorage.getItem(RECORD_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      // 隐私模式下 localStorage 会直接抛错，退化成内存记录
+      return [];
+    }
+  }
+
+  function saveRecords() {
+    try {
+      localStorage.setItem(RECORD_KEY, JSON.stringify(records));
+    } catch (e) {
+      // 存不下就只留内存里这份，不影响传输本身
+    }
+  }
+
+  /**
+   * 记一条传输。
+   * kind: "up" 上传 / "down" 下载
+   * status: "done" 完成 / "failed" 失败 / "cancelled" 已中止 / "sent" 已发起（下载无完成回调）
+   */
+  function addRecord(kind, name, path, size, status, message) {
+    records.unshift({
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      kind: kind,
+      name: name,
+      path: path,
+      size: size,
+      status: status,
+      message: message || "",
+      at: Date.now()
+    });
+    if (records.length > RECORD_LIMIT) records = records.slice(0, RECORD_LIMIT);
+    saveRecords();
+    renderRecordBadge();
+    // 弹层开着时同步刷新，用户能立刻看到新记录
+    if (el.dlgRecords.open) renderRecords();
+  }
+
+  function renderRecordBadge() {
+    var count = records.length;
+    el.recordCount.textContent = count > 99 ? "99+" : String(count);
+    el.recordCount.hidden = count === 0;
+  }
+
+  function renderRecords() {
+    if (records.length === 0) {
+      el.recordsList.innerHTML = '<li class="record-empty">还没有传输记录</li>';
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    records.forEach(function (r) {
+      var li = document.createElement("li");
+      li.className = "record is-" + r.kind +
+        (r.status === "failed" ? " is-failed" : "");
+
+      var icon = document.createElement("span");
+      icon.className = "record-icon";
+      // 上传是向上箭头，下载是向下箭头，一眼能分清方向
+      icon.innerHTML = r.kind === "up"
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M12 19V5M6 11l6-6 6 6"/></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+          ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+
+      var name = document.createElement("span");
+      name.className = "record-name";
+      name.textContent = r.name;
+      name.title = r.path || r.name;
+
+      var meta = document.createElement("span");
+      meta.className = "record-meta";
+      var statusText = r.status === "failed" ? "失败" :
+        r.status === "cancelled" ? "已中止" : "";
+      meta.textContent = [formatSize(r.size), statusText, formatTime(r.at)]
+        .filter(Boolean).join(" · ");
+      if (statusText && r.message) meta.title = r.message;
+
+      li.appendChild(icon);
+      li.appendChild(name);
+      li.appendChild(meta);
+      frag.appendChild(li);
+    });
+    el.recordsList.innerHTML = "";
+    el.recordsList.appendChild(frag);
+  }
+
+  function clearRecords() {
+    records = [];
+    saveRecords();
+    renderRecordBadge();
+    renderRecords();
+  }
+
+  function openRecords() {
+    renderRecords();
+    el.dlgRecords.showModal();
+  }
+
+  /* ---------- 新建文件夹 ---------- */
+
+  function openMkdir() {
+    el.mkdirName.value = "";
+    el.dlgMkdir.showModal();
+    setTimeout(function () { el.mkdirName.focus(); }, 30);
+  }
+
+  function submitMkdir(name) {
+    var trimmed = name.trim();
+    if (!trimmed) return;
+    fetch(withCode(API.mkdir + "?path=" + encode(currentPath) + "&name=" + encode(trimmed)), { method: "POST" })
+      .then(function (response) {
+        if (response.status === 401) {
+          el.dlgMkdir.close();
+          askAccessCode(function () { submitMkdir(trimmed); });
+          return null;
+        }
+        return response.json().then(function (body) {
+          if (!response.ok) throw new Error(body.error || ("HTTP " + response.status));
+          return body;
+        });
+      })
+      .then(function (body) {
+        if (!body) return;
+        el.dlgMkdir.close();
+        load(currentPath, { silent: true });
+      })
+      .catch(function (error) {
+        el.dlgMkdir.close();
+        renderState("error", "新建文件夹失败", error.message);
+      });
+  }
+
+  /* ---------- 删除 ---------- */
+
+  function askDelete(entry) {
+    pendingDelete = entry;
+    el.deleteText.innerHTML = "";
+    var target = document.createElement("code");
+    target.textContent = entry.path;
+    el.deleteText.appendChild(document.createTextNode(entry.dir ? "将删除整个文件夹 " : "将删除文件 "));
+    el.deleteText.appendChild(target);
+    el.deleteText.appendChild(document.createTextNode("，此操作不可撤销。"));
+    el.dlgDelete.showModal();
+  }
+
+  function confirmDelete() {
+    if (!pendingDelete) return;
+    var entry = pendingDelete;
+    pendingDelete = null;
+    el.dlgDelete.close();
+    fetch(withCode(API.remove + "?path=" + encode(entry.path)), { method: "POST" })
+      .then(function (response) {
+        if (response.status === 401) {
+          askAccessCode(function () {
+            pendingDelete = entry;
+            confirmDelete();
+          });
+          return null;
+        }
+        return response.json().then(function (body) {
+          if (!response.ok) throw new Error(body.error || ("HTTP " + response.status));
+          return body;
+        });
+      })
+      .then(function (body) {
+        if (!body) return;
+        load(currentPath, { silent: true });
+      })
+      .catch(function (error) {
+        renderState("error", "删除失败", error.message);
+      });
+  }
+
+  /* ---------- 事件绑定 ---------- */
+
+  el.btnUpload.addEventListener("click", function () { el.fileInput.click(); });
+
+  el.fileInput.addEventListener("change", function () {
+    var files = el.fileInput.files;
+    if (files && files.length > 0) {
+      addFiles(Array.prototype.slice.call(files));
+    }
+    el.fileInput.value = "";
+  });
+
+  el.btnMkdir.addEventListener("click", openMkdir);
+
+  el.formMkdir.addEventListener("submit", function (event) {
+    if (event.submitter && event.submitter.value === "cancel") return;
+    event.preventDefault();
+    submitMkdir(el.mkdirName.value);
+  });
+
+  el.deleteConfirm.addEventListener("click", confirmDelete);
+  el.deleteCancel.addEventListener("click", function () {
+    pendingDelete = null;
+    el.dlgDelete.close();
+  });
+
+  el.formCode.addEventListener("submit", function (event) {
+    event.preventDefault();
+    submitAccessCode(el.codeInput.value);
+  });
+
+  /* 授权码输错时服务端仍返回 401，会再次弹框；这里清掉旧码避免反复带错的码 */
+  el.dlgCode.addEventListener("close", function () {
+    if (el.dlgCode.returnValue !== "ok") saveAccessCode("");
+  });
+
+  el.btnClearTransfers.addEventListener("click", clearFinishedTransfers);
+  el.btnAbortAll.addEventListener("click", abortAllTransfers);
+  el.btnRecords.addEventListener("click", openRecords);
+  el.btnClearRecords.addEventListener("click", clearRecords);
+  el.btnCloseRecords.addEventListener("click", function () { el.dlgRecords.close(); });
+
+  el.crumbs.addEventListener("click", function (event) {
+    var btn = event.target.closest(".crumb");
+    if (!btn) return;
+    navigate(btn.dataset.path || "/");
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    if (el.dlgMkdir.open || el.dlgDelete.open || el.dlgRecords.open || el.dlgCode.open) return;
+    if (currentPath !== "/") {
+      event.preventDefault();
+      navigate(parentOf(currentPath));
+    }
+  });
+
+  /* 拖拽上传：整页接管，dragover 必须 preventDefault 才能收到 drop */
+  var dragDepth = 0;
+
+  function hasFiles(event) {
+    var types = event.dataTransfer && event.dataTransfer.types;
+    return !!types && Array.prototype.indexOf.call(types, "Files") >= 0;
+  }
+
+  window.addEventListener("dragenter", function (event) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth++;
+    document.body.classList.add("is-dropping");
+  });
+
+  window.addEventListener("dragover", function (event) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  });
+
+  window.addEventListener("dragleave", function (event) {
+    if (!hasFiles(event)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) document.body.classList.remove("is-dropping");
+  });
+
+  window.addEventListener("drop", function (event) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove("is-dropping");
+    var files = event.dataTransfer.files;
+    if (files && files.length > 0) {
+      addFiles(Array.prototype.slice.call(files));
+    }
+  });
+
+  /* 队列里要带上原始 File 对象才能流式发送；渲染用字段单独存，避免 JSON 化 */
+  function addFiles(files) {
+    if (!files || files.length === 0) return;
+    var added = 0;
+    files.forEach(function (file) {
+      transfers.push({
+        id: ++transferSeq,
+        name: file.name,
+        size: file.size,
+        loaded: 0,
+        dir: currentPath,
+        status: "queued",
+        message: "",
+        speed: 0,
+        rawFile: file,
+        xhr: null
+      });
+      added++;
+    });
+    if (added > 0) {
+      el.transfers.classList.add("is-open");
+      renderTransfers();
+      pumpTransfers();
+    }
+  }
+
+  /* 页面重新可见时刷新一次，避免手机端改过文件后看到旧列表 */
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      load(currentPath, { silent: true });
+    }
+  });
+
+  /* ---------- 启动 ---------- */
+
+  currentPath = pathFromHash();
+  renderCrumbs();
+  renderRecordBadge();
+  load(currentPath);
+})();
+</script>
+</body>
+</html>

@@ -23,21 +23,6 @@
     <string name="toast_restored_count">已恢复 %1$d 个应用</string>
 
     <string name="tab_adb">ADB</string>
-    <string name="tab_files">文件</string>
-    <string name="files_title">设备文件</string>
-    <string name="files_path">设备路径</string>
-    <string name="files_empty">此目录为空</string>
-    <string name="files_edit">编辑</string>
-    <string name="files_content">文件内容</string>
-    <string name="files_save">保存</string>
-    <string name="files_saved">文件已保存</string>
-    <string name="files_read_failed">读取失败，文件可能不是有效的 UTF-8 文本</string>
-    <string name="files_privilege_required">请先在「特权」页连接 Root 或 ADB 服务</string>
-    <string name="files_list_failed">读取目录失败</string>
-    <string name="files_not_text">这不是文本文件，无法用编辑器打开</string>
-    <string name="files_too_large">文件过大，不支持在应用内编辑</string>
-    <string name="files_parent">上级</string>
-    <string name="files_open">打开</string>
     <string name="action_cancel">取消</string>
     <string name="adb_title">ADB</string>
     <string name="adb_connected">%1$s</string>
@@ -124,6 +109,36 @@
     <string name="account_auth_help_body">1. 电脑浏览器登录 QQ 邮箱网页版\n2. 右上角头像 → 设置 → 账号与安全 → 安全设置\n3. 开启「POP3/IMAP/SMTP 服务」。本应用只收信、不发信，但腾讯把这几个协议打包在同一个开关里，必须一起开启\n4. 开启时腾讯要求身份验证，可用手机 QQ 扫码、输入 QQ 密码或绑定手机收短信，按页面提示完成\n5. 验证通过后点「生成授权码」，得到 16 位授权码\n\n注意：\n· 没绑定手机号的账号，腾讯会先要求绑定手机才能开启服务\n· 新注册的 QQ 邮箱需满 14 天才能使用该服务\n· 授权码只显示一次，关闭弹窗后只能重置\n· 修改 QQ 密码会让授权码失效，需要重新生成</string>
     <string name="account_email_invalid">请输入完整的邮箱地址</string>
     <string name="account_auth_required">首次添加必须填写授权码</string>
+
+    <!-- 局域网传输：底部导航入口 -->
+    <string name="tab_lanshare">传输</string>
+    <string name="lanshare_title">局域网传输</string>
+    <string name="lanshare_subtitle_running">服务运行中</string>
+    <string name="lanshare_subtitle_stopped">服务已停止</string>
+    <string name="lanshare_service_on">浏览器访问</string>
+    <string name="lanshare_service_on_desc">同一局域网内的设备都能读写这个目录</string>
+    <string name="lanshare_service_off">局域网传输</string>
+    <string name="lanshare_service_off_desc">开启后同一局域网的浏览器可上传下载文件</string>
+    <string name="lanshare_starting">正在启动…</string>
+    <string name="lanshare_code_title">访问授权码</string>
+    <string name="lanshare_code_desc_on">访问者需要输入授权码才能浏览、上传和下载</string>
+    <string name="lanshare_code_desc_off">关闭后同一局域网内的设备可直接访问，无需授权码</string>
+    <string name="lanshare_code_label">授权码</string>
+    <string name="lanshare_code_placeholder">4 位数字</string>
+    <string name="lanshare_code_random">随机生成</string>
+    <string name="lanshare_code_too_short">请输入 4 位数字</string>
+    <string name="lanshare_permission_title">需要「所有文件访问权限」</string>
+    <string name="lanshare_permission_desc">这个权限用来直接读写手机存储里的任意文件。请在接下来的系统设置页里打开开关，返回后即可启动服务。</string>
+    <string name="lanshare_permission_grant">去授权</string>
+    <string name="lanshare_permission_manual">请到「设置 → 应用 → 特殊权限 → 所有文件访问权限」里手动打开</string>
+    <string name="lanshare_log_section">传输日志</string>
+    <string name="lanshare_log_empty">还没有传输记录，开启服务后在浏览器里操作。</string>
+    <string name="lanshare_clear_logs">清空日志</string>
+    <string name="lanshare_channel_name">局域网传输</string>
+    <string name="lanshare_channel_desc">传输服务运行时的常驻通知</string>
+    <string name="lanshare_notification_title">局域网传输进行中</string>
+    <string name="lanshare_notification_text">%1$s</string>
+    <string name="lanshare_notification_text_offline">未连接 WiFi</string>
 
     <string name="action_refresh">刷新</string>
     <string name="action_retry">重试</string>

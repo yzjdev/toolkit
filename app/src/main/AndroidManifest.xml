@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 列出全部已安装应用（Android 11+ 需要） -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -10,6 +11,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 局域网传输：直接读写内部存储任意目录，浏览器端才能浏览整个手机存储。
+         Android 11+ 由用户在系统设置页授予；10 及以下走运行时权限。 -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
     <application
         android:name=".ToolkitApp"
@@ -30,6 +43,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 传输期间保持前台，避免锁屏后进程被冻结导致浏览器连接中断 -->
+        <service
+            android:name=".lanshare.LanShareService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- 邮件原始报文存在应用私有目录，导出时需要 FileProvider 授权 -->
         <provider
